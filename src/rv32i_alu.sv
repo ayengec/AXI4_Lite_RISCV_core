@@ -18,9 +18,11 @@ module rv32i_alu (
 
   logic signed [31:0] op_a_signed;
   logic signed [31:0] op_b_signed;
+  logic signed [31:0] sra_result;
 
-  assign op_a_signed = signed'(op_a_i);
-  assign op_b_signed = signed'(op_b_i);
+  assign op_a_signed = op_a_i;
+  assign op_b_signed = op_b_i;
+  assign sra_result  = op_a_signed >>> op_b_i[4:0];
 
   // Comparison helpers for branch/control logic
   assign cmp_eq_o  = (op_a_i == op_b_i);          // BRN-001, BRN-002
@@ -33,35 +35,35 @@ module rv32i_alu (
     unique case (alu_op_i)
 
       ALU_ADD: begin
-        result_o = op_a_i + op_b_i;               // ALU-001, ALU-003, ALU-015
+        result_o = op_a_i + op_b_i;                    // ALU-001, ALU-003, ALU-015
       end
 
       ALU_SUB: begin
-        result_o = op_a_i - op_b_i;               // ALU-002
+        result_o = op_a_i - op_b_i;                    // ALU-002
       end
 
       ALU_AND: begin
-        result_o = op_a_i & op_b_i;               // ALU-004
+        result_o = op_a_i & op_b_i;                    // ALU-004
       end
 
       ALU_OR: begin
-        result_o = op_a_i | op_b_i;               // ALU-005
+        result_o = op_a_i | op_b_i;                    // ALU-005
       end
 
       ALU_XOR: begin
-        result_o = op_a_i ^ op_b_i;               // ALU-006
+        result_o = op_a_i ^ op_b_i;                    // ALU-006
       end
 
       ALU_SLL: begin
-        result_o = op_a_i << op_b_i[4:0];         // ALU-007
+        result_o = op_a_i << op_b_i[4:0];              // ALU-007
       end
 
       ALU_SRL: begin
-        result_o = op_a_i >> op_b_i[4:0];         // ALU-008
+        result_o = op_a_i >> op_b_i[4:0];              // ALU-008
       end
 
       ALU_SRA: begin
-        result_o = logic'(op_a_signed >>> op_b_i[4:0]); // ALU-009
+        result_o = sra_result;                         // ALU-009
       end
 
       ALU_SLT: begin
@@ -69,11 +71,11 @@ module rv32i_alu (
       end
 
       ALU_SLTU: begin
-        result_o = {31'd0, (op_a_i < op_b_i)};    // ALU-011, ALU-013
+        result_o = {31'd0, (op_a_i < op_b_i)};         // ALU-011, ALU-013
       end
 
       ALU_COPY_B: begin
-        result_o = op_b_i;                        // ALU-014
+        result_o = op_b_i;                             // ALU-014
       end
 
       default: begin
