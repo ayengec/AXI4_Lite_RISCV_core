@@ -64,11 +64,19 @@ module rv32i_cpu (
   logic [4:0]  mem_rd_q, mem_rd_d;
   logic        mem_reg_write_q, mem_reg_write_d;
 
+  // AXI request tracking
+  logic fetch_ar_done_q, fetch_ar_done_d;
+  logic mem_ar_done_q,   mem_ar_done_d;
+  logic mem_aw_done_q,   mem_aw_done_d;
+  logic mem_w_done_q,    mem_w_done_d;
+
+  // Regfile
   logic        rf_we;
   logic [4:0]  rf_waddr;
   logic [31:0] rf_wdata;
   logic [31:0] rs1_data, rs2_data;
 
+  // Decoder outputs
   logic [6:0]  dec_opcode;
   logic [4:0]  dec_rs1, dec_rs2, dec_rd;
   logic [2:0]  dec_funct3;
@@ -87,6 +95,7 @@ module rv32i_cpu (
   logic        dec_op_a_is_pc, dec_op_b_is_uimm;
   logic        dec_illegal;
 
+  // ALU / branch
   logic [31:0] alu_op_a, alu_op_b;
   logic [31:0] alu_result;
   logic        cmp_eq, cmp_lt, cmp_ltu;
@@ -190,21 +199,21 @@ module rv32i_cpu (
 
   always_comb begin
     if (dec_op_a_is_pc) begin
-      alu_op_a = pc_q;                    // ALU-015
+      alu_op_a = pc_q;                                    // ALU-015
     end
     else begin
       alu_op_a = rs1_data;
     end
 
     if (dec_op_b_is_uimm) begin
-      alu_op_b = dec_imm_u;               // ALU-014, ALU-015
+      alu_op_b = dec_imm_u;                               // ALU-014, ALU-015
     end
     else if (dec_alu_src_imm) begin
       if (dec_is_store) begin
-        alu_op_b = dec_imm_s;             // MEM-006/007/008 address calc
+        alu_op_b = dec_imm_s;                             // MEM-006/007/008
       end
       else begin
-        alu_op_b = dec_imm_i;             // ALU-003 etc.
+        alu_op_b = dec_imm_i;                             // ALU-003 etc.
       end
     end
     else begin
@@ -212,7 +221,7 @@ module rv32i_cpu (
     end
   end
 
-  assign next_pc_seq = pc_q + 32'd4;      // IF-002
+  assign next_pc_seq = pc_q + 32'd4;                      // IF-002
 
   always_comb begin
     next_pc_ctrl_valid = 1'b0;
@@ -220,15 +229,15 @@ module rv32i_cpu (
 
     if (dec_is_jal) begin
       next_pc_ctrl_valid = 1'b1;
-      next_pc_ctrl       = jal_target;    // IF-004, JMP-001
+      next_pc_ctrl       = jal_target;                    // IF-004, JMP-001
     end
     else if (dec_is_jalr) begin
       next_pc_ctrl_valid = 1'b1;
-      next_pc_ctrl       = jalr_target;   // IF-004, JMP-002
+      next_pc_ctrl       = jalr_target;                   // IF-004, JMP-002
     end
     else if (dec_is_branch && branch_taken) begin
       next_pc_ctrl_valid = 1'b1;
-      next_pc_ctrl       = branch_target; // IF-003, BRN-001..006
+      next_pc_ctrl       = branch_target;                 // IF-003, BRN-001..006
     end
   end
 
@@ -240,8 +249,8 @@ module rv32i_cpu (
     mem_addr_misaligned = 1'b0;
 
     unique case (dec_mem_size)
-      MEM_WORD: mem_addr_misaligned = |alu_result[1:0];     // MEM-015
-      MEM_HALF: mem_addr_misaligned =  alu_result[0];       // MEM-016
+      MEM_WORD: mem_addr_misaligned = |alu_result[1:0];   // MEM-015
+      MEM_HALF: mem_addr_misaligned =  alu_result[0];     // MEM-016
       default:  mem_addr_misaligned = 1'b0;
     endcase
   end
@@ -251,14 +260,14 @@ module rv32i_cpu (
   //============================================================
 
   function automatic logic [3:0] gen_wstrb (
-    input mem_size_e    size,
-    input logic [1:0]   addr_lsb
+    input mem_size_e   size,
+    input logic [1:0]  addr_lsb
   );
     logic [3:0] tmp;
     begin
       tmp = 4'b0000;
       unique case (size)
-        MEM_WORD: tmp = 4'b1111;                        // MEM-012
+        MEM_WORD: tmp = 4'b1111;                          // MEM-012
         MEM_HALF: tmp = addr_lsb[1] ? 4'b1100 : 4'b0011; // MEM-012
         MEM_BYTE: begin
           unique case (addr_lsb)
@@ -276,18 +285,18 @@ module rv32i_cpu (
   endfunction
 
   function automatic logic [31:0] gen_store_wdata (
-    input mem_size_e    size,
-    input logic [1:0]   addr_lsb,
-    input logic [31:0]  rs2_val
+    input mem_size_e   size,
+    input logic [1:0]  addr_lsb,
+    input logic [31:0] rs2_val
   );
     logic [31:0] tmp;
     begin
       tmp = 32'h0000_0000;
       unique case (size)
-        MEM_WORD: tmp = rs2_val;                             // MEM-006
-        MEM_HALF: tmp = addr_lsb[1] ? {rs2_val[15:0],16'h0} // MEM-007
-                                     : {16'h0,rs2_val[15:0]};
-        MEM_BYTE: begin                                      // MEM-008
+        MEM_WORD: tmp = rs2_val;                          // MEM-006
+        MEM_HALF: tmp = addr_lsb[1] ? {rs2_val[15:0], 16'h0}
+                                    : {16'h0, rs2_val[15:0]}; // MEM-007
+        MEM_BYTE: begin                                   // MEM-008
           unique case (addr_lsb)
             2'd0: tmp = {24'h0, rs2_val[7:0]};
             2'd1: tmp = {16'h0, rs2_val[7:0], 8'h0};
@@ -303,31 +312,34 @@ module rv32i_cpu (
   endfunction
 
   //============================================================
-  // Load data extraction / extension
+  // Load extraction / extension
   //============================================================
 
   always_comb begin
+    logic [15:0] hword;
+    logic [7:0]  byte_val;
+
+    hword        = 16'h0000;
+    byte_val     = 8'h00;
     load_data_ext = 32'h0000_0000;
 
     unique case (mem_size_q)
       MEM_WORD: begin
-        load_data_ext = axi_rdata; // MEM-001
+        load_data_ext = axi_rdata;                        // MEM-001
       end
 
       MEM_HALF: begin
-        logic [15:0] hword;
         hword = mem_addr_q[1] ? axi_rdata[31:16] : axi_rdata[15:0];
 
         if (mem_load_unsigned_q) begin
-          load_data_ext = {16'h0000, hword};                // MEM-003
+          load_data_ext = {16'h0000, hword};              // MEM-003
         end
         else begin
-          load_data_ext = {{16{hword[15]}}, hword};         // MEM-002
+          load_data_ext = {{16{hword[15]}}, hword};       // MEM-002
         end
       end
 
       MEM_BYTE: begin
-        logic [7:0] byte_val;
         unique case (mem_addr_q[1:0])
           2'd0: byte_val = axi_rdata[7:0];
           2'd1: byte_val = axi_rdata[15:8];
@@ -337,10 +349,10 @@ module rv32i_cpu (
         endcase
 
         if (mem_load_unsigned_q) begin
-          load_data_ext = {24'h000000, byte_val};           // MEM-005
+          load_data_ext = {24'h000000, byte_val};         // MEM-005
         end
         else begin
-          load_data_ext = {{24{byte_val[7]}}, byte_val};    // MEM-004
+          load_data_ext = {{24{byte_val[7]}}, byte_val};  // MEM-004
         end
       end
 
@@ -362,35 +374,37 @@ module rv32i_cpu (
     if (state_q == ST_EXECUTE) begin
       if (!illegal_q && !dec_illegal) begin
         if (!dec_is_load && !dec_is_store && dec_reg_write) begin
-          rf_we    = (dec_rd != 5'd0);                     // RF-002, RF-007
+          rf_we    = (dec_rd != 5'd0);                    // RF-002, RF-007
           rf_waddr = dec_rd;
 
           unique case (dec_wb_sel)
             WB_ALU: rf_wdata = alu_result;
-            WB_PC4: rf_wdata = next_pc_seq;                // JMP-001, JMP-002
+            WB_PC4: rf_wdata = next_pc_seq;               // JMP-001, JMP-002
             default: rf_wdata = 32'h0000_0000;
           endcase
         end
       end
     end
     else if (state_q == ST_MEM_WAIT) begin
-      if (mem_is_load_q && axi_rvalid && (axi_rresp == AXI_RESP_OKAY) && mem_reg_write_q) begin
+      if (mem_is_load_q && axi_rvalid &&
+          (axi_rresp == AXI_RESP_OKAY) &&
+          mem_reg_write_q) begin
         rf_we    = (mem_rd_q != 5'd0);
         rf_waddr = mem_rd_q;
-        rf_wdata = load_data_ext;                          // MEM-001..005
+        rf_wdata = load_data_ext;                         // MEM-001..005
       end
     end
   end
 
   //============================================================
-  // Sequential state / registers
+  // Sequential
   //============================================================
 
   always_ff @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
-      state_q             <= ST_FETCH_REQ;                 // SYS-005
-      pc_q                <= RV32I_RESET_VECTOR;           // SYS-006
-      instr_q             <= 32'h0000_0013;                // harmless reset value (ADDI x0,x0,0)
+      state_q             <= ST_FETCH_REQ;                // SYS-005
+      pc_q                <= RV32I_RESET_VECTOR;          // SYS-006
+      instr_q             <= 32'h0000_0013;
       illegal_q           <= 1'b0;
 
       mem_addr_q          <= 32'h0000_0000;
@@ -402,6 +416,11 @@ module rv32i_cpu (
       mem_size_q          <= MEM_NONE;
       mem_rd_q            <= 5'd0;
       mem_reg_write_q     <= 1'b0;
+
+      fetch_ar_done_q     <= 1'b0;
+      mem_ar_done_q       <= 1'b0;
+      mem_aw_done_q       <= 1'b0;
+      mem_w_done_q        <= 1'b0;
     end
     else begin
       state_q             <= state_d;
@@ -418,13 +437,18 @@ module rv32i_cpu (
       mem_size_q          <= mem_size_d;
       mem_rd_q            <= mem_rd_d;
       mem_reg_write_q     <= mem_reg_write_d;
+
+      fetch_ar_done_q     <= fetch_ar_done_d;
+      mem_ar_done_q       <= mem_ar_done_d;
+      mem_aw_done_q       <= mem_aw_done_d;
+      mem_w_done_q        <= mem_w_done_d;
     end
   end
 
   assign illegal_instr = illegal_q;
 
   //============================================================
-  // Next-state logic
+  // Next-state
   //============================================================
 
   always_comb begin
@@ -443,6 +467,11 @@ module rv32i_cpu (
     mem_rd_d            = mem_rd_q;
     mem_reg_write_d     = mem_reg_write_q;
 
+    fetch_ar_done_d     = fetch_ar_done_q;
+    mem_ar_done_d       = mem_ar_done_q;
+    mem_aw_done_d       = mem_aw_done_q;
+    mem_w_done_d        = mem_w_done_q;
+
     unique case (state_q)
 
       ST_FETCH_REQ: begin
@@ -451,15 +480,22 @@ module rv32i_cpu (
           state_d   = ST_HALT;                            // EXC-002
         end
         else begin
-          state_d = ST_FETCH_WAIT;
+          if (!fetch_ar_done_q && axi_arready) begin
+            fetch_ar_done_d = 1'b1;
+          end
+
+          if (fetch_ar_done_q || axi_arready) begin
+            fetch_ar_done_d = 1'b0;
+            state_d         = ST_FETCH_WAIT;
+          end
         end
       end
 
       ST_FETCH_WAIT: begin
         if (axi_rvalid) begin
           if (axi_rresp != AXI_RESP_OKAY) begin
-            illegal_d = 1'b1;                             // AXI fetch error treated illegal
-            state_d   = ST_HALT;                          // EXC-002
+            illegal_d = 1'b1;
+            state_d   = ST_HALT;
           end
           else begin
             instr_d = axi_rdata;                          // IF-001
@@ -494,6 +530,11 @@ module rv32i_cpu (
             mem_reg_write_d     = dec_reg_write;
             mem_wstrb_d         = gen_wstrb(dec_mem_size, alu_result[1:0]);
             mem_wdata_d         = gen_store_wdata(dec_mem_size, alu_result[1:0], rs2_data);
+
+            mem_ar_done_d       = 1'b0;
+            mem_aw_done_d       = 1'b0;
+            mem_w_done_d        = 1'b0;
+
             state_d             = ST_MEM_REQ;
           end
         end
@@ -505,27 +546,47 @@ module rv32i_cpu (
 
       ST_MEM_REQ: begin
         if (mem_is_load_q) begin
-          state_d = ST_MEM_WAIT;
+          if (!mem_ar_done_q && axi_arready) begin
+            mem_ar_done_d = 1'b1;
+          end
+
+          if (mem_ar_done_q || axi_arready) begin
+            mem_ar_done_d = 1'b0;
+            state_d       = ST_MEM_WAIT;
+          end
         end
         else if (mem_is_store_q) begin
-          state_d = ST_MEM_WAIT;
+          if (!mem_aw_done_q && axi_awready) begin
+            mem_aw_done_d = 1'b1;
+          end
+
+          if (!mem_w_done_q && axi_wready) begin
+            mem_w_done_d = 1'b1;
+          end
+
+          if ((mem_aw_done_q || axi_awready) &&
+              (mem_w_done_q  || axi_wready)) begin
+            mem_aw_done_d = 1'b0;
+            mem_w_done_d  = 1'b0;
+            state_d       = ST_MEM_WAIT;
+          end
         end
       end
 
       ST_MEM_WAIT: begin
         if (mem_is_load_q && axi_rvalid) begin
           if (axi_rresp != AXI_RESP_OKAY) begin
-            illegal_d = 1'b1;                             // MEM bus error -> illegal/halt policy
+            illegal_d = 1'b1;
             state_d   = ST_HALT;
           end
           else begin
-            pc_d    = next_pc_seq;                        // memory op uses normal sequential PC
+            pc_d    = next_pc_seq;
             state_d = ST_FETCH_REQ;                       // MEM-011, MEM-013
           end
         end
         else if (mem_is_store_q && axi_bvalid) begin
           if (axi_bresp != AXI_RESP_OKAY) begin
-            illegal_d = 1'b1;                             // MEM bus error -> illegal/halt policy
+            illegal_d = 1'b1;
             state_d   = ST_HALT;
           end
           else begin
@@ -554,7 +615,7 @@ module rv32i_cpu (
   always_comb begin
     axi_awvalid = 1'b0;
     axi_awaddr  = 32'h0000_0000;
-    axi_awprot  = 3'b000;   // data, non-secure, unprivileged
+    axi_awprot  = 3'b000;
 
     axi_wvalid  = 1'b0;
     axi_wdata   = mem_wdata_q;
@@ -571,9 +632,9 @@ module rv32i_cpu (
     unique case (state_q)
 
       ST_FETCH_REQ: begin
-        axi_arvalid = 1'b1;
-        axi_araddr  = pc_q;                              // IF-007
-        axi_arprot  = 3'b100;                            // instruction access
+        axi_arvalid = !fetch_ar_done_q;
+        axi_araddr  = pc_q;                               // IF-007
+        axi_arprot  = 3'b100;                             // instruction access
       end
 
       ST_FETCH_WAIT: begin
@@ -582,16 +643,16 @@ module rv32i_cpu (
 
       ST_MEM_REQ: begin
         if (mem_is_load_q) begin
-          axi_arvalid = 1'b1;
+          axi_arvalid = !mem_ar_done_q;
           axi_araddr  = mem_addr_q;
-          axi_arprot  = 3'b000;                          // MEM-014
+          axi_arprot  = 3'b000;                           // MEM-014
         end
         else if (mem_is_store_q) begin
-          axi_awvalid = 1'b1;
+          axi_awvalid = !mem_aw_done_q;
           axi_awaddr  = mem_addr_q;
-          axi_awprot  = 3'b000;                          // MEM-014
+          axi_awprot  = 3'b000;                           // MEM-014
 
-          axi_wvalid  = 1'b1;
+          axi_wvalid  = !mem_w_done_q;
         end
       end
 
