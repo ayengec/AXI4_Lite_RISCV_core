@@ -20,7 +20,7 @@ This project is organized as a small but clean CPU design with standalone unit t
 - illegal instruction detection and halt
 
 ---
-## PS: My Future work: Will develop a UVM TB constrained-random verification by using my own AXI4-Lite VIP which is on my github ![Github Link](https://github.com/ayengec/AXI4_Lite_VIP) 
+## PS: My Future work: Will develop a UVM TB constrained-random verification by using my own AXI4-Lite VIP which is on my github [Github Link](https://github.com/ayengec/AXI4_Lite_VIP) 
 
 ---
 
