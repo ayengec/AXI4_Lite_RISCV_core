@@ -12,12 +12,17 @@ This project is organized as a small but clean CPU design with standalone unit t
 - illegal instruction detection and halt
 
 ---
+
 ## Hardware Design Requirements
 
-For the complete project requirements, see [doc/reqs.md](doc/reqs.md).
+  For the complete project requirements, see [doc/reqs.md](doc/reqs.md).
+  
 ---
+
 ## My Future work: Will develop a UVM TB constrained-random verification by using my own AXI4-Lite VIP which is on my github.
+
 ---
+
 The latest smoke run is available in:
 
 - `scripts/logs/tb_rv32i_cpu_smoke.log`
