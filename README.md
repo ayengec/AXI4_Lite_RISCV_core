@@ -1,5 +1,15 @@
 # RV32I AXI4-Lite CPU
 
+## Hardware Design Requirements
+
+  For the complete project requirements, see [doc/reqs.md](doc/reqs.md).
+  
+---
+
+## My Future work: Will develop a UVM TB constrained-random verification by using my own AXI4-Lite VIP which is on my github.
+
+---
+
 A compact **single-clock, multi-cycle, in-order RISC-V CPU** written in **SystemVerilog**, built around a **single shared AXI4-Lite master interface** for both instruction fetch and data access.
 
 This project is organized as a small but clean CPU design with standalone unit tests for the key blocks and a top-level smoke test that exercises the full execution path:
@@ -10,16 +20,6 @@ This project is organized as a small but clean CPU design with standalone unit t
 - taken branch behavior
 - skipped instruction behavior
 - illegal instruction detection and halt
-
----
-
-## Hardware Design Requirements
-
-  For the complete project requirements, see [doc/reqs.md](doc/reqs.md).
-  
----
-
-## My Future work: Will develop a UVM TB constrained-random verification by using my own AXI4-Lite VIP which is on my github.
 
 ---
 
