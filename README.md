@@ -350,10 +350,7 @@ If you want, you can extend this core next with:
 - pipeline stages
 - CSR / interrupt support
 - a proper bus-functional memory model
-- constrained-random verification
+  
+##Will develope a UVM TB constrained-random verification by using my own AXI4-Lite VIP which is on my github.
 
 ---
-
-## License
-
-This project includes a `LICENSE` file at the repository root.
