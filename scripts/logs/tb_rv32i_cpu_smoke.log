@@ -1,0 +1,184 @@
+xrun
+	-sv
+	-clean
+	-access +rwc
+	-linedebug
+	-timescale 1ns/1ps
+	-top tb_rv32i_cpu_smoke
+	-l logs/tb_rv32i_cpu_smoke.log
+	-xmlibdirname xrun_tb_rv32i_cpu_smoke
+	../src/rv32i_pkg.sv
+	../src/rv32i_regfile.sv
+	../src/rv32i_decoder.sv
+	../src/rv32i_alu.sv
+	../src/rv32i_branch_unit.sv
+	../src/rv32i_cpu.sv
+	../src//unit_tests/tb_rv32i_cpu_smoke.sv
+xrun: *W,BADPRF: The -linedebug option may have an adverse performance impact.
+xrun: *N,CLEAN: Removing existing directory ./xrun_tb_rv32i_cpu_smoke.
+file: ../src/rv32i_pkg.sv
+	package worklib.rv32i_pkg:sv
+		errors: 0, warnings: 0
+file: ../src/rv32i_regfile.sv
+	module worklib.rv32i_regfile:sv
+		errors: 0, warnings: 0
+file: ../src/rv32i_decoder.sv
+	module worklib.rv32i_decoder:sv
+		errors: 0, warnings: 0
+file: ../src/rv32i_alu.sv
+	module worklib.rv32i_alu:sv
+		errors: 0, warnings: 0
+file: ../src/rv32i_branch_unit.sv
+	module worklib.rv32i_branch_unit:sv
+		errors: 0, warnings: 0
+file: ../src/rv32i_cpu.sv
+	module worklib.rv32i_cpu:sv
+		errors: 0, warnings: 0
+file: ../src//unit_tests/tb_rv32i_cpu_smoke.sv
+	module worklib.tb_rv32i_cpu_smoke:sv
+		errors: 0, warnings: 0
+	Elaborating the design hierarchy:
+		Caching library 'worklib' ....... Done
+	Top level design units:
+		rv32i_pkg
+		$unit_0x328a881d
+		tb_rv32i_cpu_smoke
+	Building instance overlay tables: .................... Done
+	Generating native compiled code:
+		worklib.rv32i_branch_unit:sv <0x4e12fd06>
+			streams:   9, words:  6888
+		worklib.rv32i_alu:sv <0x10ddc662>
+			streams:   8, words:  8658
+		worklib.rv32i_decoder:sv <0x77cda759>
+			streams:  23, words: 58075
+		worklib.tb_rv32i_cpu_smoke:sv <0x7712a202>
+			streams:  71, words: 84990
+		worklib.rv32i_regfile:sv <0x19d60cc5>
+			streams:   6, words:  5946
+		worklib.rv32i_cpu:sv <0x74b09ca4>
+			streams: 118, words: 98454
+	Building instance specific data structures.
+	Loading native compiled code:     .................... Done
+	Design hierarchy summary:
+		                 Instances  Unique
+		Modules:                 6       6
+		Verilog packages:        1       1
+		Registers:             235     235
+		Scalar wires:           76       -
+		Vectored wires:         94       -
+		Always blocks:          17      17
+		Initial blocks:          4       4
+		Cont. assignments:      33      33
+		Pseudo assignments:     84       -
+		Compilation units:       1       1
+		Simulation timescale:  1ps
+	Writing initial simulation snapshot: worklib.tb_rv32i_cpu_smoke:sv
+Loading snapshot worklib.tb_rv32i_cpu_smoke:sv .................... Done
+Simulation SnapShot is worklib.tb_rv32i_cpu_smoke:sv
+
+xcelium> run
+==============================================================
+Starting tb_rv32i_cpu_smoke
+Scenario: arithmetic -> store -> load -> taken branch -> skipped instruction -> halt
+==============================================================
+Test intent by program step:
+  Step 1) Build constant 5 in x1
+  Step 2) Build constant 7 in x2
+  Step 3) Add x1 and x2 into x3
+  Step 4) Store x3 to memory[16]
+  Step 5) Load memory[16] back into x4
+  Step 6) Take BEQ because x3 == x4
+  Step 7) Intentionally skip ADDI x5, x0, 1 because the branch is taken
+  Step 8) Execute the branch target and write x6 = 9
+  Step 9) Execute an illegal instruction and halt the CPU
+[TB] Reset released. CPU should start fetching from PC=0x00000000.
+[IFETCH] PC=0x00000000 | Step 1: ADDI x1, x0, 5    -> initialize x1 with 5 | time=25000
+[TRACE] cycle=0 | state=FETCH_REQ | pc=0x00000000 | instr=0x00000013 | illegal=0
+[IFETCH-RSP] instr=0x00500093 | instruction returned to CPU | time=35000
+[TRACE] cycle=1 | state=FETCH_WAIT | pc=0x00000000 | instr=0x00000013 | illegal=0
+[WB] x1 <= 0x00000005 | Step 1 completed: x1 receives constant 5
+[TRACE] cycle=2 | state=EXECUTE | pc=0x00000000 | instr=0x00500093 | illegal=0
+[IFETCH] PC=0x00000004 | Step 2: ADDI x2, x0, 7    -> initialize x2 with 7 | time=55000
+[TRACE] cycle=3 | state=FETCH_REQ | pc=0x00000004 | instr=0x00500093 | illegal=0
+[IFETCH-RSP] instr=0x00700113 | instruction returned to CPU | time=65000
+[TRACE] cycle=4 | state=FETCH_WAIT | pc=0x00000004 | instr=0x00500093 | illegal=0
+[WB] x2 <= 0x00000007 | Step 2 completed: x2 receives constant 7
+[TRACE] cycle=5 | state=EXECUTE | pc=0x00000004 | instr=0x00700113 | illegal=0
+[IFETCH] PC=0x00000008 | Step 3: ADD  x3, x1, x2   -> x3 should become 12 | time=85000
+[TRACE] cycle=6 | state=FETCH_REQ | pc=0x00000008 | instr=0x00700113 | illegal=0
+[IFETCH-RSP] instr=0x002081b3 | instruction returned to CPU | time=95000
+[TRACE] cycle=7 | state=FETCH_WAIT | pc=0x00000008 | instr=0x00700113 | illegal=0
+[WB] x3 <= 0x0000000c | Step 3 completed: x3 receives the sum x1 + x2
+[TRACE] cycle=8 | state=EXECUTE | pc=0x00000008 | instr=0x002081b3 | illegal=0
+[IFETCH] PC=0x0000000c | Step 4: SW   x3, 64(x0)   -> store result to memory[16] | time=115000
+[TRACE] cycle=9 | state=FETCH_REQ | pc=0x0000000c | instr=0x002081b3 | illegal=0
+[IFETCH-RSP] instr=0x04302023 | instruction returned to CPU | time=125000
+[TRACE] cycle=10 | state=FETCH_WAIT | pc=0x0000000c | instr=0x002081b3 | illegal=0
+[TRACE] cycle=11 | state=EXECUTE | pc=0x0000000c | instr=0x04302023 | illegal=0
+[DWRITE-REQ] addr=0x00000040 | CPU issues store address phase | time=145000
+[DWRITE-DAT] data=0x0000000c strb=0xf | CPU issues store data phase | time=145000
+[TRACE] cycle=12 | state=MEM_REQ | pc=0x0000000c | instr=0x04302023 | illegal=0
+[TRACE] cycle=13 | state=MEM_WAIT | pc=0x0000000c | instr=0x04302023 | illegal=0
+[DWRITE-RSP] Store transaction completed successfully | time=165000
+[MEM] memory[16] <= 0x0000000c | Step 4 completed: store committed to data memory
+[TRACE] cycle=14 | state=MEM_WAIT | pc=0x0000000c | instr=0x04302023 | illegal=0
+[IFETCH] PC=0x00000010 | Step 5: LW   x4, 64(x0)   -> load stored value back into x4 | time=175000
+[TRACE] cycle=15 | state=FETCH_REQ | pc=0x00000010 | instr=0x04302023 | illegal=0
+[IFETCH-RSP] instr=0x04002203 | instruction returned to CPU | time=185000
+[TRACE] cycle=16 | state=FETCH_WAIT | pc=0x00000010 | instr=0x04302023 | illegal=0
+[TRACE] cycle=17 | state=EXECUTE | pc=0x00000010 | instr=0x04002203 | illegal=0
+[DREAD-REQ ] addr=0x00000040 | CPU requests load data | time=205000
+[TRACE] cycle=18 | state=MEM_REQ | pc=0x00000010 | instr=0x04002203 | illegal=0
+[DREAD-RSP ] data=0x0000000c | load data returned to CPU | time=215000
+[WB] x4 <= 0x0000000c | Step 5 completed: x4 receives the value loaded from memory[16]
+[TRACE] cycle=19 | state=MEM_WAIT | pc=0x00000010 | instr=0x04002203 | illegal=0
+[IFETCH] PC=0x00000014 | Step 6: BEQ  x3, x4, +8   -> branch should be taken | time=225000
+[TRACE] cycle=20 | state=FETCH_REQ | pc=0x00000014 | instr=0x04002203 | illegal=0
+[IFETCH-RSP] instr=0x00418463 | instruction returned to CPU | time=235000
+[TRACE] cycle=21 | state=FETCH_WAIT | pc=0x00000014 | instr=0x04002203 | illegal=0
+[CTRL] BEQ taken | x3 == x4, PC will jump from 0x00000014 to 0x0000001c and Step 7 will be skipped
+[TRACE] cycle=22 | state=EXECUTE | pc=0x00000014 | instr=0x00418463 | illegal=0
+[IFETCH] PC=0x0000001c | Step 8: ADDI x6, x0, 9    -> executes after taken branch | time=255000
+[TRACE] cycle=23 | state=FETCH_REQ | pc=0x0000001c | instr=0x00418463 | illegal=0
+[IFETCH-RSP] instr=0x00900313 | instruction returned to CPU | time=265000
+[TRACE] cycle=24 | state=FETCH_WAIT | pc=0x0000001c | instr=0x00418463 | illegal=0
+[WB] x6 <= 0x00000009 | Step 8 completed: x6 receives constant 9 at the branch target
+[TRACE] cycle=25 | state=EXECUTE | pc=0x0000001c | instr=0x00900313 | illegal=0
+[MILESTONE] Branch target reached. Step 7 (ADDI x5, x0, 1) was intentionally skipped.
+[MILESTONE] BEQ behavior confirmed. Execution continues with Step 8 at the branch target.
+[IFETCH] PC=0x00000020 | Step 9: ILLEGAL           -> CPU must assert illegal and halt | time=285000
+[TRACE] cycle=26 | state=FETCH_REQ | pc=0x00000020 | instr=0x00900313 | illegal=0
+[IFETCH-RSP] instr=0xffffffff | instruction returned to CPU | time=295000
+[TRACE] cycle=27 | state=FETCH_WAIT | pc=0x00000020 | instr=0x00900313 | illegal=0
+[TRACE] cycle=28 | state=EXECUTE | pc=0x00000020 | instr=0xffffffff | illegal=0
+[TRACE] cycle=29 | state=HALT | pc=0x00000020 | instr=0xffffffff | illegal=1
+[MILESTONE] Illegal instruction detected. CPU entered halt behavior as intended.
+--------------------------------------------------------------
+Checking architectural results against the intended scenario
+--------------------------------------------------------------
+[PASS] Step 1 result: x1 must contain 5 after ADDI x1, x0, 5
+[PASS] Step 2 result: x2 must contain 7 after ADDI x2, x0, 7
+[PASS] Step 3 result: x3 must contain 12 after ADD x3, x1, x2
+[PASS] Step 4 result: memory[16] must contain 12 after SW x3, 64(x0)
+[PASS] Step 5 result: x4 must load back 12 from memory[16]
+[PASS] Step 6 result: BEQ must be taken because x3 == x4, which skips Step 7 and transfers control to Step 8
+[PASS] Step 7 result: x5 must remain 0 because Step 7 is intentionally skipped by the taken BEQ
+[PASS] Step 8 result: x6 must contain 9 because the branch target instruction must execute
+[PASS] Step 9 result: the illegal instruction must be detected and the CPU must halt
+--------------------------------------------------------------
+Final architectural state snapshot:
+  x1 = 0x00000005
+  x2 = 0x00000007
+  x3 = 0x0000000c
+  x4 = 0x0000000c
+  x5 = 0x00000000
+  x6 = 0x00000009
+  mem[16] = 0x0000000c
+  illegal_instr = 1
+--------------------------------------------------------------
+CPU smoke finished | PASS=9 FAIL=0
+==============================================================
+Simulation complete via $finish(1) at time 317 NS + 0
+../src/unit_tests/tb_rv32i_cpu_smoke.sv:510     $finish;
+xcelium> exit
+Simulation time at exit is: 317000000 FS

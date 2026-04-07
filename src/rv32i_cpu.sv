@@ -480,11 +480,14 @@ module rv32i_cpu (
           state_d   = ST_HALT;                            // EXC-002
         end
         else begin
-          if (!fetch_ar_done_q && axi_arready) begin
+          // Advance only on a real AXI AR handshake.
+          // Checking only axi_arready can miss the request when reset is
+          // deasserted on a clock edge and axi_arvalid was still 0 in that cycle.
+          if (!fetch_ar_done_q && axi_arvalid && axi_arready) begin
             fetch_ar_done_d = 1'b1;
           end
 
-          if (fetch_ar_done_q || axi_arready) begin
+          if (fetch_ar_done_q || (axi_arvalid && axi_arready)) begin
             fetch_ar_done_d = 1'b0;
             state_d         = ST_FETCH_WAIT;
           end
@@ -546,26 +549,26 @@ module rv32i_cpu (
 
       ST_MEM_REQ: begin
         if (mem_is_load_q) begin
-          if (!mem_ar_done_q && axi_arready) begin
+          if (!mem_ar_done_q && axi_arvalid && axi_arready) begin
             mem_ar_done_d = 1'b1;
           end
 
-          if (mem_ar_done_q || axi_arready) begin
+          if (mem_ar_done_q || (axi_arvalid && axi_arready)) begin
             mem_ar_done_d = 1'b0;
             state_d       = ST_MEM_WAIT;
           end
         end
         else if (mem_is_store_q) begin
-          if (!mem_aw_done_q && axi_awready) begin
+          if (!mem_aw_done_q && axi_awvalid && axi_awready) begin
             mem_aw_done_d = 1'b1;
           end
 
-          if (!mem_w_done_q && axi_wready) begin
+          if (!mem_w_done_q && axi_wvalid && axi_wready) begin
             mem_w_done_d = 1'b1;
           end
 
-          if ((mem_aw_done_q || axi_awready) &&
-              (mem_w_done_q  || axi_wready)) begin
+          if ((mem_aw_done_q || (axi_awvalid && axi_awready)) &&
+              (mem_w_done_q  || (axi_wvalid  && axi_wready))) begin
             mem_aw_done_d = 1'b0;
             mem_w_done_d  = 1'b0;
             state_d       = ST_MEM_WAIT;
@@ -610,6 +613,9 @@ module rv32i_cpu (
 
   //============================================================
   // AXI outputs
+  // FIX: tüm AXI çıkışları rst_n=0 iken 0'da tutulur.
+  // Böylece axi_arvalid reset süresince HIGH gitmez,
+  // testbench'teki @(posedge axi_arvalid) event'i doğru tetiklenir.
   //============================================================
 
   always_comb begin
@@ -629,45 +635,50 @@ module rv32i_cpu (
 
     axi_rready  = 1'b0;
 
-    unique case (state_q)
+    // *** EKLENEN KISIM: reset aktifken AXI sinyalleri sürülmez ***
+    if (rst_n) begin
 
-      ST_FETCH_REQ: begin
-        axi_arvalid = !fetch_ar_done_q;
-        axi_araddr  = pc_q;                               // IF-007
-        axi_arprot  = 3'b100;                             // instruction access
-      end
+      unique case (state_q)
 
-      ST_FETCH_WAIT: begin
-        axi_rready  = 1'b1;
-      end
-
-      ST_MEM_REQ: begin
-        if (mem_is_load_q) begin
-          axi_arvalid = !mem_ar_done_q;
-          axi_araddr  = mem_addr_q;
-          axi_arprot  = 3'b000;                           // MEM-014
+        ST_FETCH_REQ: begin
+          axi_arvalid = !fetch_ar_done_q;
+          axi_araddr  = pc_q;                             // IF-007
+          axi_arprot  = 3'b100;                           // instruction access
         end
-        else if (mem_is_store_q) begin
-          axi_awvalid = !mem_aw_done_q;
-          axi_awaddr  = mem_addr_q;
-          axi_awprot  = 3'b000;                           // MEM-014
 
-          axi_wvalid  = !mem_w_done_q;
+        ST_FETCH_WAIT: begin
+          axi_rready  = 1'b1;
         end
-      end
 
-      ST_MEM_WAIT: begin
-        if (mem_is_load_q) begin
-          axi_rready = 1'b1;
-        end
-        else if (mem_is_store_q) begin
-          axi_bready = 1'b1;
-        end
-      end
+        ST_MEM_REQ: begin
+          if (mem_is_load_q) begin
+            axi_arvalid = !mem_ar_done_q;
+            axi_araddr  = mem_addr_q;
+            axi_arprot  = 3'b000;                         // MEM-014
+          end
+          else if (mem_is_store_q) begin
+            axi_awvalid = !mem_aw_done_q;
+            axi_awaddr  = mem_addr_q;
+            axi_awprot  = 3'b000;                         // MEM-014
 
-      default: begin
-      end
-    endcase
+            axi_wvalid  = !mem_w_done_q;
+          end
+        end
+
+        ST_MEM_WAIT: begin
+          if (mem_is_load_q) begin
+            axi_rready = 1'b1;
+          end
+          else if (mem_is_store_q) begin
+            axi_bready = 1'b1;
+          end
+        end
+
+        default: begin
+        end
+      endcase
+
+    end // if (rst_n)
   end
 
 endmodule
