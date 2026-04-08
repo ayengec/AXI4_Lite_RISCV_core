@@ -258,7 +258,7 @@ The provided script is set up for **Cadence Xcelium / xrun**.
 
 ```bash
 cd scripts
-bash run.sh
+./run.sh
 ```
 
 This script compiles:
@@ -279,7 +279,7 @@ and writes the simulator log to:
 
 ```bash
 cd scripts
-bash clean.sh
+./clean.sh
 ```
 
 ---
