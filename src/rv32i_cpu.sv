@@ -613,9 +613,6 @@ module rv32i_cpu (
 
   //============================================================
   // AXI outputs
-  // FIX: tüm AXI çıkışları rst_n=0 iken 0'da tutulur.
-  // Böylece axi_arvalid reset süresince HIGH gitmez,
-  // testbench'teki @(posedge axi_arvalid) event'i doğru tetiklenir.
   //============================================================
 
   always_comb begin
@@ -635,7 +632,6 @@ module rv32i_cpu (
 
     axi_rready  = 1'b0;
 
-    // *** EKLENEN KISIM: reset aktifken AXI sinyalleri sürülmez ***
     if (rst_n) begin
 
       unique case (state_q)
