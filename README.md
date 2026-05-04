@@ -1,8 +1,8 @@
 # rv32i_axi4l_subsystem_uvm_tb
 
-[![UVM](https://img.shields.io/badge/UVM-1.2-blue.svg)](https://accellera.org/)
+[![UVM](https://img.shields.io/badge/UVM-1.1d-blue.svg)](https://accellera.org/)
 [![RISC-V](https://img.shields.io/badge/ISA-RV32I-orange.svg)](https://riscv.org/)
-[![Simulator](https://img.shields.io/badge/Simulator-Cadence%20Xcelium-green.svg)](#)
+[![Simulator](https://img.shields.io/badge/Simulator-Cadence%20Xcelium-reg.svg)](#)
 
 This repository contains a self-checking UVM verification environment for an RV32I AXI4-Lite CPU subsystem. The testbench builds small RISC-V programs, preloads them into the AXI4-Lite RAM model, runs the same program in a SystemVerilog reference model, releases the RTL CPU, and compares the final architectural state.
 
