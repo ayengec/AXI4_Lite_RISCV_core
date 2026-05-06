@@ -1,6 +1,6 @@
 # Sanitized Regression Trace Examples
 
-These snippets are copied from the regression logs and cleaned for documentation. They intentionally avoid user names, host names, absolute workspace paths, and tool installation paths.
+These snippets are copied from the regression logs and cleaned for documentation.
 
 Use this page when the README summary is not enough and you want to see what each test actually generated, what the reference model expected, and what the DUT did.
 
