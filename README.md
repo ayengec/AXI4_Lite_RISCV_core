@@ -1,4 +1,4 @@
-# rv32i_axi4l_subsystem_uvm_tb
+# RISCV32I AXI4-Lite Subsystem DESIGN & UVM TB
 
 [![UVM](https://img.shields.io/badge/UVM-1.2-blue.svg)](https://accellera.org/)
 [![RISC-V](https://img.shields.io/badge/ISA-RV32I-orange.svg)](https://riscv.org/)
