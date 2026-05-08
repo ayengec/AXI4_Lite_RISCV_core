@@ -1,8 +1,8 @@
 # rv32i_axi4l_subsystem_uvm_tb
 
-[![UVM](https://img.shields.io/badge/UVM-1.1d-blue.svg)](https://accellera.org/)
+[![UVM](https://img.shields.io/badge/UVM-1.2-blue.svg)](https://accellera.org/)
 [![RISC-V](https://img.shields.io/badge/ISA-RV32I-orange.svg)](https://riscv.org/)
-[![Simulator](https://img.shields.io/badge/Simulator-Cadence%20Xcelium-reg.svg)](#)
+[![Simulator](https://img.shields.io/badge/Simulator-Cadence%20Xcelium-red.svg)](#)
 
 This repository contains a self-checking UVM verification environment for an RV32I AXI4-Lite CPU subsystem. The testbench builds small RISC-V programs, preloads them into the AXI4-Lite RAM model, runs the same program in a SystemVerilog reference model, releases the RTL CPU, and compares the final architectural state.
 
@@ -15,7 +15,7 @@ The current flow is designed to make debug readable. Every important phase can b
 
 ## Design And Requirements Process
 
-This project starts from a written hardware requirements document, not directly from tests. The full requirement set is in `doc/reqs.md`.
+This project starts from written requirements and a verification plan, not directly from tests. The full requirement set is in `doc/reqs.md`, the verification strategy is documented in `doc/verification_plan.md`, and UID-level requirement mapping is tracked in `doc/traceability.md`.
 
 The requirement document defines this revision as a compact RV32I core with the following scope:
 
@@ -40,7 +40,7 @@ Out of scope for this revision:
 
 ### Requirement Groups
 
-`doc/reqs.md` currently tracks 85 requirements:
+`doc/reqs.md` currently tracks 95 requirements:
 
 | Group | Count | Examples |
 |---|---:|---|
@@ -180,8 +180,21 @@ The program builders under `sequences/` are normal UVM sequences, not virtual se
 | Test | Main intent |
 |---|---|
 | `cpu_basic_alu_test` | R-type and I-type ALU operations, register writeback, x0 behavior |
+| `cpu_alu_imm_corner_test` | Directed immediate-ALU corner cases for signed and unsigned comparisons |
 | `cpu_load_store_test` | `LB/LH/LW/LBU/LHU` and `SB/SH/SW`, including byte lanes and unaligned byte/halfword accesses |
 | `cpu_branch_test` | `BEQ/BNE/BLT/BGE/BLTU/BGEU`, `JAL`, and `JALR` control flow |
+| `cpu_branch_corner_test` | Directed signed/unsigned branch direction corner cases |
+| `cpu_jump_x0_test` | `JAL` and `JALR` behavior when `rd` is `x0` |
+| `cpu_reg_coverage_sweep_test` | Register and opcode sweep for functional coverage closure work |
+| `cpu_mem_lane_sweep_test` | Byte and halfword lane sweep for memory datapath coverage |
+| `cpu_regfile_semantics_test` | Register-file reset, x0, read/write, and writeback semantics |
+| `cpu_address_boundary_test` | Instruction and data memory boundary behavior |
+| `cpu_misaligned_access_test` | Misaligned load/store halt behavior |
+| `cpu_misaligned_control_test` | Misaligned branch and jump target halt behavior |
+| `cpu_invalid_decode_test` | Invalid opcode, `funct3`, and `funct7` decode halt behavior |
+| `cpu_axi_wait_state_test` | AXI4-Lite wait-state and stall behavior |
+| `cpu_axi_error_test` | AXI read/write error response halt behavior |
+| `cpu_branch_unit_force_test` | Defensive branch-unit default-case coverage |
 | `cpu_illegal_instr_test` | Unsupported instruction halt behavior |
 | `cpu_random_test` | Randomized valid programs to stress datapath and scoreboard consistency |
 
@@ -241,13 +254,26 @@ Expected final shape:
 ```text
 Regression Summary
   PASS  cpu_basic_alu_test
+  PASS  cpu_alu_imm_corner_test
   PASS  cpu_load_store_test
   PASS  cpu_branch_test
+  PASS  cpu_branch_corner_test
+  PASS  cpu_jump_x0_test
+  PASS  cpu_reg_coverage_sweep_test
+  PASS  cpu_mem_lane_sweep_test
+  PASS  cpu_regfile_semantics_test
+  PASS  cpu_address_boundary_test
+  PASS  cpu_misaligned_access_test
+  PASS  cpu_misaligned_control_test
+  PASS  cpu_invalid_decode_test
+  PASS  cpu_axi_wait_state_test
+  PASS  cpu_axi_error_test
+  PASS  cpu_branch_unit_force_test
   PASS  cpu_illegal_instr_test
   PASS  cpu_random_test
 
-PASS: 5 / 5
-FAIL: 0 / 5
+PASS: 18 / 18
+FAIL: 0 / 18
 ```
 
 ## Reading The Logs
@@ -343,41 +369,46 @@ Note: generated IMC HTML can include machine-specific metadata in the header. Do
 
 The current merged report shows good directed-test progress and clear closure targets.
 
+Code coverage is tracked at the DUT instance level: `cpu_tb_top.u_cpu`. Use the cumulative view in `scripts/merged_coverage_report_rc_html/report_sub_dir/dir_1/summ_6_t1.html` so the report includes the CPU and its RTL children, while excluding UVM, RAM, and unrelated testbench utility code. Functional coverage is reported separately from the UVM covergroup.
+
 | Metric | Current result |
 |---|---:|
-| Top-level average | `84.25%` |
-| Overall covered | `80.55%` (`2393 / 2971`) |
-| Block average | `83.19%` |
-| Block covered | `82.20%` (`314 / 382`) |
-| Expression average | `78.96%` |
-| Expression covered | `73.39%` (`80 / 109`) |
-| Toggle average | `75.88%` |
-| Toggle covered | `80.45%` (`1872 / 2327`) |
+| DUT code scope | `cpu_tb_top.u_cpu` cumulative |
+| DUT overall average | `95.79%` |
+| DUT overall covered | `87.10%` (`1964 / 2255`) |
+| DUT block average | `98.07%` |
+| DUT block covered | `95.26%` (`241 / 253`) |
+| DUT expression average | `88.73%` |
+| DUT expression covered | `78.38%` (`58 / 74`) |
+| DUT toggle average | `92.40%` |
+| DUT toggle covered | `86.30%` (`1650 / 1912`) |
 | FSM state coverage | `100.00%` (`6 / 6`) |
-| FSM transition coverage | `70.00%` (`7 / 10`) |
-| Functional covergroup average | `87.76%` |
-| Functional covergroup covered | `83.21%` (`114 / 137`) |
-| Functional uncovered bins | `23` |
+| FSM transition coverage | `90.00%` (`9 / 10`) |
+| Functional covergroup scope | `uvm_pkg` cumulative |
+| Functional covergroup average | `100.00%` |
+| Functional covergroup covered | `100.00%` (`137 / 137`) |
+| Functional uncovered bins | `0` |
 
-![Coverage summary](my_run_logs/coverage_summary.png)
+Source report pages:
 
-![CPU coverage required view](my_run_logs/cpu_coverage_required_one.png)
-
-![Functional coverage DUT view](my_run_logs/func_cov_duv.png)
+```text
+scripts/merged_coverage_report_rc_html/report_sub_dir/dir_1/summ_6_t1.html  # DUT code coverage: cpu_tb_top.u_cpu
+scripts/merged_coverage_report_rc_html/report_sub_dir/dir_1/summ_0_t1.html  # Functional covergroup coverage: uvm_pkg cumulative
+```
 
 ### Coverage Interpretation
 
-The coverage results show that the core instruction flow, register comparison, memory checking, and several directed corner cases are already active in regression. FSM state coverage is complete, which means all modeled CPU states are reached. The remaining closure work is mostly in FSM transitions, expression coverage, toggle coverage, and uncovered functional bins.
+The coverage results show that the core instruction flow, register comparison, memory checking, and directed corner cases are active in regression. FSM state coverage is complete, which means all modeled CPU states are reached. DUT code coverage is measured at `cpu_tb_top.u_cpu`; the latest cumulative view shows strong block coverage progress, improved FSM transition coverage, and remaining closure work in expression coverage, toggle coverage, and other reachable CPU RTL holes.
 
-Functional coverage is currently `83.21%` covered with `23` uncovered bins. Those holes should drive the next set of targeted tests instead of adding random tests blindly.
+Functional coverage is currently closed for the planned covergroup: `100.00%` covered (`137 / 137`) with `0` uncovered bins. Future functional coverage work should keep this closure intact as new requirements and coverpoints are added.
 
 ## Next Version Goals
 
 The next version should turn this from a working verification environment into a coverage-closure flow:
 
-- Push code coverage close to `100%`.
-- Reach `100%` functional coverage.
-- Add targeted tests for uncovered opcode, `funct3`, register, branch, and memory-access bins.
+- Push DUT code coverage at `cpu_tb_top.u_cpu` close to `100%`.
+- Maintain `100%` functional coverage as the plan evolves.
+- Add targeted tests for new or changed opcode, `funct3`, register, branch, and memory-access bins.
 - Add directed cases for the missing FSM transitions.
 - Improve random program generation so it intentionally targets coverage holes.
 - Treat merged coverage and regression pass/fail as release criteria.

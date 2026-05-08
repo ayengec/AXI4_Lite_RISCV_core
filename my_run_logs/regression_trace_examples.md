@@ -1,6 +1,6 @@
 # Sanitized Regression Trace Examples
 
-These snippets are copied from the regression logs and cleaned for documentation.
+These snippets are copied from the regression logs and cleaned for documentation. They intentionally avoid user names, host names, absolute workspace paths, and tool installation paths.
 
 Use this page when the README summary is not enough and you want to see what each test actually generated, what the reference model expected, and what the DUT did.
 
@@ -19,15 +19,53 @@ Use this page when the README summary is not enough and you want to see what eac
 ## Regression Result Summary
 
 ```text
-cpu_basic_alu_test       PASS
-cpu_load_store_test      PASS
-cpu_branch_test          PASS
-cpu_illegal_instr_test   PASS
-cpu_random_test          PASS
+cpu_basic_alu_test                 PASS
+cpu_alu_imm_corner_test            PASS
+cpu_load_store_test                PASS
+cpu_branch_test                    PASS
+cpu_branch_corner_test             PASS
+cpu_jump_x0_test                   PASS
+cpu_reg_coverage_sweep_test        PASS
+cpu_mem_lane_sweep_test            PASS
+cpu_regfile_semantics_test         PASS
+cpu_address_boundary_test          PASS
+cpu_misaligned_access_test         PASS
+cpu_misaligned_control_test        PASS
+cpu_invalid_decode_test            PASS
+cpu_axi_wait_state_test            PASS
+cpu_axi_error_test                 PASS
+cpu_branch_unit_force_test         PASS
+cpu_illegal_instr_test             PASS
+cpu_random_test                    PASS
+
+PASS: 18 / 18
+FAIL: 0 / 18
 
 UVM_ERROR :    0
 UVM_FATAL :    0
 ```
+
+## Current Coverage Snapshot
+
+The current merged coverage report has reached functional closure. The DUT code coverage numbers below use the `cpu_tb_top.u_cpu` cumulative view from `scripts/merged_coverage_report_rc_html/report_sub_dir/dir_1/summ_6_t1.html`, and the functional numbers use the `uvm_pkg` cumulative covergroup view from `scripts/merged_coverage_report_rc_html/report_sub_dir/dir_1/summ_0_t1.html`.
+
+| Metric | Current result |
+|---|---:|
+| DUT overall average | `95.79%` |
+| DUT overall covered | `87.10%` (`1964 / 2255`) |
+| DUT block average | `98.07%` |
+| DUT block covered | `95.26%` (`241 / 253`) |
+| DUT expression average | `88.73%` |
+| DUT expression covered | `78.38%` (`58 / 74`) |
+| DUT toggle average | `92.40%` |
+| DUT toggle covered | `86.30%` (`1650 / 1912`) |
+| FSM state coverage | `100.00%` (`6 / 6`) |
+| FSM transition coverage | `90.00%` (`9 / 10`) |
+| Functional covergroup average | `100.00%` |
+| Functional covergroup covered | `100.00%` (`137 / 137`) |
+| Functional uncovered bins | `0` |
+
+The trace examples below still focus on representative debug logs for the original directed and random tests. The expanded regression adds coverage-directed tests for immediate ALU corners, branch corners, jump-to-x0 behavior, register coverage, memory lanes, register-file semantics, address boundaries, misaligned accesses, AXI wait states, AXI error responses, and defensive branch-unit coverage.
 
 ## cpu_basic_alu_test
 

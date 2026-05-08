@@ -52,6 +52,22 @@ class cpu_base_test extends uvm_test;
     vif.release_reset();
   endtask
 
+  task preload_and_start_no_ref(cpu_base_seq program_seq);
+    vif.assert_reset();
+
+    `uvm_info(get_type_name(), $sformatf(
+      "Preloading %0d instructions into RAM instruction region without reference-model run",
+      program_seq.program_size), UVM_LOW)
+    for (int i = 0; i < program_seq.program_size; i++) begin
+      vif.preload_word(i * 4, program_seq.program_mem[i]);
+      `uvm_info(get_type_name(), $sformatf(
+        "PRELOAD STEP %03d ADDR=0x%08h INSTR=0x%08h  %s",
+        i, i * 4, program_seq.program_mem[i], program_seq.program_desc[i]), UVM_LOW)
+    end
+
+    vif.release_reset();
+  endtask
+
   // Wait for CPU halt
   task wait_cpu_halt();
     fork

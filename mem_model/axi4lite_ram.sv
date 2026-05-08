@@ -1,4 +1,7 @@
 // axi4lite_ram.sv
+// Author: Alican Yengec
+// Purpose: Simple AXI4-Lite RAM model with backdoor preload/readback and
+//          test-controlled wait-state/error-response injection.
 // Expanded from original by Alican Yengec
 //
 // AXI4-Lite slave RAM for CPU UVM testbench.
@@ -10,9 +13,9 @@
 //   0x200 - 0x3FF : Data region (words 128-255)
 //
 // AXI4-Lite slave behaviour:
-//   AWREADY and WREADY are always 1 (zero wait state).
-//   ARREADY is always 1 (zero wait state).
-//   BRESP and RRESP are always OKAY (2'b00).
+//   AWREADY, WREADY, and ARREADY default to zero wait state.
+//   BRESP and RRESP default to OKAY (2'b00).
+//   Backdoor tasks can inject wait states and one-shot response errors.
 //   Writes outside the implemented memory window are silently ignored.
 //   Reads from undefined addresses return 32'h0.
 //   WSTRB is honoured on writes.
@@ -71,14 +74,29 @@ module axi4lite_ram #(
   logic        wr_addr_hit;
   logic        ar_addr_hit;
 
-  // AWREADY and WREADY are always asserted - zero wait state slave
-  assign AWREADY = 1'b1;
-  assign WREADY  = 1'b1;
-  assign BRESP   = 2'b00;
+  int unsigned cfg_ar_wait_cycles;
+  int unsigned cfg_aw_wait_cycles;
+  int unsigned cfg_w_wait_cycles;
+  int unsigned ar_wait_count;
+  int unsigned aw_wait_count;
+  int unsigned w_wait_count;
+  logic        ar_wait_active;
+  logic        aw_wait_active;
+  logic        w_wait_active;
 
-  // ARREADY is always asserted - zero wait state slave
-  assign ARREADY = 1'b1;
-  assign RRESP   = 2'b00;
+  logic        aw_seen;
+  logic        w_seen;
+
+  logic        inject_fetch_rresp_valid;
+  logic        inject_data_rresp_valid;
+  logic        inject_bresp_valid;
+  logic [1:0]  inject_fetch_rresp;
+  logic [1:0]  inject_data_rresp;
+  logic [1:0]  inject_bresp;
+
+  wire aw_fire = AWVALID && AWREADY;
+  wire w_fire  = WVALID  && WREADY;
+  wire ar_fire = ARVALID && ARREADY;
 
   always_comb begin
     wr_idx      = (wr_addr >> 2);
@@ -90,19 +108,89 @@ module axi4lite_ram #(
     ar_addr_hit = (ar_idx < MEM_DEPTH_WORDS);
   end
 
-  // Capture AW/W when both valid in the same cycle.
+  task automatic update_ready(
+    input  logic        valid,
+    input  int unsigned cfg_wait_cycles,
+    inout  logic        ready,
+    inout  logic        wait_active,
+    inout  int unsigned wait_count
+  );
+    if (!valid) begin
+      ready       = (cfg_wait_cycles == 0);
+      wait_active = 1'b0;
+      wait_count  = 0;
+    end
+    else if (!wait_active) begin
+      if (cfg_wait_cycles == 0) begin
+        ready = 1'b1;
+      end
+      else begin
+        ready       = 1'b0;
+        wait_active = 1'b1;
+        wait_count  = 0;
+      end
+    end
+    else if ((wait_count + 1) >= cfg_wait_cycles) begin
+      ready = 1'b1;
+    end
+    else begin
+      ready      = 1'b0;
+      wait_count = wait_count + 1;
+    end
+
+    if (valid && ready) begin
+      ready       = (cfg_wait_cycles == 0);
+      wait_active = 1'b0;
+      wait_count  = 0;
+    end
+  endtask
+
+  // READY generation, defaulting to zero wait state.
+  always_ff @(posedge ACLK or negedge ARESETn) begin
+    if (!ARESETn) begin
+      AWREADY        <= (cfg_aw_wait_cycles == 0);
+      WREADY         <= (cfg_w_wait_cycles  == 0);
+      ARREADY        <= (cfg_ar_wait_cycles == 0);
+      aw_wait_active <= 1'b0;
+      w_wait_active  <= 1'b0;
+      ar_wait_active <= 1'b0;
+      aw_wait_count  <= 0;
+      w_wait_count   <= 0;
+      ar_wait_count  <= 0;
+    end else begin
+      update_ready(AWVALID, cfg_aw_wait_cycles, AWREADY, aw_wait_active, aw_wait_count);
+      update_ready(WVALID,  cfg_w_wait_cycles,  WREADY,  w_wait_active,  w_wait_count);
+      update_ready(ARVALID, cfg_ar_wait_cycles, ARREADY, ar_wait_active, ar_wait_count);
+    end
+  end
+
+  // Capture AW/W independently and perform a write once both channels arrived.
   always_ff @(posedge ACLK or negedge ARESETn) begin
     if (!ARESETn) begin
       wr_en   <= 1'b0;
       wr_addr <= '0;
       wr_data <= '0;
       wr_strb <= '0;
+      aw_seen <= 1'b0;
+      w_seen  <= 1'b0;
     end else begin
-      wr_en <= AWVALID & WVALID;
-      if (AWVALID) wr_addr <= AWADDR;
-      if (WVALID) begin
+      wr_en <= 1'b0;
+
+      if (aw_fire) begin
+        wr_addr <= AWADDR;
+        aw_seen <= 1'b1;
+      end
+
+      if (w_fire) begin
         wr_data <= WDATA;
         wr_strb <= WSTRB;
+        w_seen  <= 1'b1;
+      end
+
+      if ((aw_seen || aw_fire) && (w_seen || w_fire) && !BVALID) begin
+        wr_en  <= 1'b1;
+        aw_seen <= 1'b0;
+        w_seen  <= 1'b0;
       end
     end
   end
@@ -131,12 +219,19 @@ module axi4lite_ram #(
 
   // ---- Write response -----------------------------------------
   always_ff @(posedge ACLK or negedge ARESETn) begin
-    if (!ARESETn)
+    if (!ARESETn) begin
       BVALID <= 1'b0;
-    else if (wr_en)
+      BRESP  <= 2'b00;
+    end
+    else if (wr_en) begin
       BVALID <= 1'b1;
-    else if (BVALID && BREADY)
+      BRESP  <= inject_bresp_valid ? inject_bresp : 2'b00;
+      inject_bresp_valid <= 1'b0;
+    end
+    else if (BVALID && BREADY) begin
       BVALID <= 1'b0;
+      BRESP  <= 2'b00;
+    end
   end
 
   // ---- Memory read path ---------------------------------------
@@ -144,20 +239,38 @@ module axi4lite_ram #(
     if (!ARESETn) begin
       RVALID <= 1'b0;
       RDATA  <= '0;
-    end else if (ARVALID && ARREADY) begin
+      RRESP  <= 2'b00;
+    end else if (ar_fire) begin
       RVALID <= 1'b1;
+      if (ARPROT == 3'b100 && inject_fetch_rresp_valid) begin
+        RRESP <= inject_fetch_rresp;
+        inject_fetch_rresp_valid <= 1'b0;
+      end
+      else if (ARPROT != 3'b100 && inject_data_rresp_valid) begin
+        RRESP <= inject_data_rresp;
+        inject_data_rresp_valid <= 1'b0;
+      end
+      else begin
+        RRESP <= 2'b00;
+      end
+
       if (ar_addr_hit)
         RDATA <= mem[ar_idx];
       else
         RDATA <= 32'h0;
     end else if (RVALID && RREADY) begin
       RVALID <= 1'b0;
+      RRESP  <= 2'b00;
     end
   end
 
   // ==============================================================
   // Backdoor tasks for UVM testbench
   // ==============================================================
+
+  initial begin
+    clear_axi_controls();
+  end
 
   // Preload a 32-bit word at the given byte address (must be word-aligned)
   task automatic preload_word(input logic [31:0] byte_addr, input logic [31:0] data);
@@ -192,6 +305,43 @@ module axi4lite_ram #(
   task automatic clear_mem();
     for (int i = 0; i < MEM_DEPTH_WORDS; i++)
       mem[i] = '0;
+  endtask
+
+  task automatic clear_axi_controls();
+    cfg_ar_wait_cycles       = 0;
+    cfg_aw_wait_cycles       = 0;
+    cfg_w_wait_cycles        = 0;
+    inject_fetch_rresp_valid = 1'b0;
+    inject_data_rresp_valid  = 1'b0;
+    inject_bresp_valid       = 1'b0;
+    inject_fetch_rresp       = 2'b00;
+    inject_data_rresp        = 2'b00;
+    inject_bresp             = 2'b00;
+  endtask
+
+  task automatic set_read_wait_cycles(input int unsigned cycles);
+    cfg_ar_wait_cycles = cycles;
+  endtask
+
+  task automatic set_write_wait_cycles(input int unsigned aw_cycles,
+                                       input int unsigned w_cycles);
+    cfg_aw_wait_cycles = aw_cycles;
+    cfg_w_wait_cycles  = w_cycles;
+  endtask
+
+  task automatic inject_next_fetch_rresp(input logic [1:0] resp);
+    inject_fetch_rresp       = resp;
+    inject_fetch_rresp_valid = 1'b1;
+  endtask
+
+  task automatic inject_next_data_rresp(input logic [1:0] resp);
+    inject_data_rresp       = resp;
+    inject_data_rresp_valid = 1'b1;
+  endtask
+
+  task automatic inject_next_bresp(input logic [1:0] resp);
+    inject_bresp       = resp;
+    inject_bresp_valid = 1'b1;
   endtask
 
 endmodule : axi4lite_ram

@@ -16,6 +16,31 @@ interface cpu_tb_if(input logic clk);
     cpu_tb_top.u_ram.preload_word(byte_addr, data);
   endtask
 
+  task automatic clear_axi_controls();
+    cpu_tb_top.u_ram.clear_axi_controls();
+  endtask
+
+  task automatic set_read_wait_cycles(input int unsigned cycles);
+    cpu_tb_top.u_ram.set_read_wait_cycles(cycles);
+  endtask
+
+  task automatic set_write_wait_cycles(input int unsigned aw_cycles,
+                                       input int unsigned w_cycles);
+    cpu_tb_top.u_ram.set_write_wait_cycles(aw_cycles, w_cycles);
+  endtask
+
+  task automatic inject_next_fetch_rresp(input logic [1:0] resp);
+    cpu_tb_top.u_ram.inject_next_fetch_rresp(resp);
+  endtask
+
+  task automatic inject_next_data_rresp(input logic [1:0] resp);
+    cpu_tb_top.u_ram.inject_next_data_rresp(resp);
+  endtask
+
+  task automatic inject_next_bresp(input logic [1:0] resp);
+    cpu_tb_top.u_ram.inject_next_bresp(resp);
+  endtask
+
   function automatic logic [31:0] read_mem_word(input logic [31:0] byte_addr);
     return cpu_tb_top.u_ram.backdoor_read(byte_addr);
   endfunction

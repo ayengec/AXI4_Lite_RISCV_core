@@ -255,4 +255,4 @@ This document defines the hardware requirements for a simple RV32I CPU implement
 
 ---
 
-*Total: 85 requirements — SYS(11) · RF(8) · IF(10) · ID(12) · ALU(15) · BRN/JMP(10) · MEM(24) · EXC(5)*
+*Total: 95 requirements — SYS(11) · RF(8) · IF(10) · ID(12) · ALU(15) · BRN/JMP(10) · MEM(24) · EXC(5)*

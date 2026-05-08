@@ -97,6 +97,39 @@ module cpu_tb_top;
     .RDATA    (rdata),    .RRESP   (rresp)
   );
 
+  // ---- Protocol and reset assertions -------------------------
+  cpu_protocol_assertions u_protocol_assertions (
+    .clk               (clk),
+    .rst_n             (rst_n),
+    .cpu_state         (u_cpu.state_q),
+    .cpu_pc            (u_cpu.pc_q),
+    .cpu_mem_is_load   (u_cpu.mem_is_load_q),
+    .cpu_mem_is_store  (u_cpu.mem_is_store_q),
+    .cpu_illegal_instr (u_cpu.illegal_instr),
+    .cpu_x0            (u_cpu.u_regfile.regs[0]),
+    .axi_awvalid       (awvalid),
+    .axi_awready       (awready),
+    .axi_awaddr        (awaddr),
+    .axi_awprot        (awprot),
+    .axi_wvalid        (wvalid),
+    .axi_wready        (wready),
+    .axi_wdata         (wdata),
+    .axi_wstrb         (wstrb),
+    .axi_bvalid        (bvalid),
+    .axi_bready        (bready),
+    .axi_arvalid       (arvalid),
+    .axi_arready       (arready),
+    .axi_araddr        (araddr),
+    .axi_arprot        (arprot),
+    .axi_rvalid        (rvalid),
+    .axi_rready        (rready)
+  );
+
+  cpu_regfile_assertions u_regfile_assertions (
+    .clk               (clk),
+    .rst_n             (rst_n)
+  );
+
   // ---- Optional DUT execution trace ---------------------------
   bit        trace_pending_read;
   bit        trace_pending_instr;

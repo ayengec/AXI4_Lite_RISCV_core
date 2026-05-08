@@ -11,8 +11,21 @@ cd "$SCRIPT_DIR"
 
 TESTS=(
   cpu_basic_alu_test
+  cpu_alu_imm_corner_test
   cpu_load_store_test
   cpu_branch_test
+  cpu_branch_corner_test
+  cpu_jump_x0_test
+  cpu_reg_coverage_sweep_test
+  cpu_mem_lane_sweep_test
+  cpu_regfile_semantics_test
+  cpu_address_boundary_test
+  cpu_misaligned_access_test
+  cpu_misaligned_control_test
+  cpu_invalid_decode_test
+  cpu_axi_wait_state_test
+  cpu_axi_error_test
+  cpu_branch_unit_force_test
   cpu_illegal_instr_test
   cpu_random_test
 )

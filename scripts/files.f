@@ -24,5 +24,9 @@
 // ---- TB Package (includes env, seq, tests) ----
 ../tb/cpu_tb_pkg.sv
 
+// ---- TB Assertions ----
+../tb/cpu_protocol_assertions.sv
+../tb/cpu_regfile_assertions.sv
+
 // ---- TB Top ----
 ../tb/cpu_tb_top.sv
