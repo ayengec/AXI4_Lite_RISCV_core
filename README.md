@@ -408,10 +408,8 @@ The next version should turn this from a working verification environment into a
 
 - Push DUT code coverage at `cpu_tb_top.u_cpu` close to `100%`.
 - Maintain `100%` functional coverage as the plan evolves.
-- Add targeted tests for new or changed opcode, `funct3`, register, branch, and memory-access bins.
-- Add directed cases for the missing FSM transitions.
+- Maybe add directed cases for the missing FSM transitions.
 - Improve random program generation so it intentionally targets coverage holes.
-- Treat merged coverage and regression pass/fail as release criteria.
 
 ## Pass Criteria
 
